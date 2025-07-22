@@ -46,13 +46,24 @@ export default function HomeScreen() {
       }
       setError(null);
       
-      // Fetch current price first for accurate real-time data
-      const priceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
-      const priceData = await priceResponse.json();
-      const newPrice = priceData.bitcoin.usd;
-      const change24h = priceData.bitcoin.usd_24h_change || 0;
+      // Fetch comprehensive Bitcoin data including 24h metrics
+      const detailedResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false');
+      const detailedData = await detailedResponse.json();
       
-      // Fetch 1-year historical data for yearly performance and other metrics
+      if (!detailedData.market_data) {
+        throw new Error('Market data not available');
+      }
+      
+      const marketData = detailedData.market_data;
+      const newPrice = marketData.current_price.usd;
+      const priceChange = marketData.price_change_24h || 0;
+      const priceChangePercent = marketData.price_change_percentage_24h || 0;
+      const high24h = marketData.high_24h.usd;
+      const low24h = marketData.low_24h.usd;
+      const volume24h = marketData.total_volume.usd;
+      const marketCap = marketData.market_cap.usd;
+      
+      // Fetch 1-year historical data for yearly performance
       const yearlyResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365');
       const yearlyData: BitcoinHistoricalData = await yearlyResponse.json();
       
@@ -60,40 +71,20 @@ export default function HomeScreen() {
         throw new Error('No historical data available');
       }
       
-      // Get the data points
-      const prices = yearlyData.prices;
-      const marketCaps = yearlyData.market_caps;
-      const volumes = yearlyData.total_volumes;
-      
-      // Calculate 24h change from the API data (more accurate)
-      const previousPrice24h = newPrice - change24h;
-      const priceChange = change24h;
-      const priceChangePercent = (priceChange / previousPrice24h) * 100;
-      
-      // Calculate 24h high/low from recent data points (last few days of data)
-      const recentPrices = prices.slice(-7); // Last 7 days
-      const allRecentPrices = recentPrices.map(p => p[1]);
-      const high24h = Math.max(...allRecentPrices);
-      const low24h = Math.min(...allRecentPrices);
-      
       // Calculate yearly performance (first price point is ~1 year ago)
-      const priceOneYearAgo = prices[0][1];
+      const priceOneYearAgo = yearlyData.prices[0][1];
       const yearlyChange = newPrice - priceOneYearAgo;
       const yearlyChangePercent = (yearlyChange / priceOneYearAgo) * 100;
       
-      // Get latest market cap and volume
-      const latestMarketCap = marketCaps[marketCaps.length - 1][1];
-      const latestVolume = volumes[volumes.length - 1][1];
-      
       const newPerformanceData: BitcoinPerformanceData = {
         currentPrice: newPrice,
-        previousPrice: previousPrice24h,
+        previousPrice: newPrice - priceChange,
         priceChange: priceChange,
         priceChangePercent: priceChangePercent,
         high24h: high24h,
         low24h: low24h,
-        volume24h: latestVolume,
-        marketCap: latestMarketCap,
+        volume24h: volume24h,
+        marketCap: marketCap,
         yearlyChange: yearlyChange,
         yearlyChangePercent: yearlyChangePercent,
         priceOneYearAgo: priceOneYearAgo
@@ -185,17 +176,10 @@ export default function HomeScreen() {
   const getPriceChangeText = () => {
     if (!performanceData) return '';
     const sign = performanceData.priceChange >= 0 ? '+' : '';
-    return `${sign}${formatPrice(performanceData.priceChange)} (${sign}${performanceData.priceChangePercent.toFixed(2)}%)`;
-  };
-
-  const getCompactPriceChangeText = () => {
-    if (!performanceData) return '';
-    const sign = performanceData.priceChange >= 0 ? '+' : '';
-    // Format with abbreviated currency for space saving
     const amount = Math.abs(performanceData.priceChange);
     let formattedAmount;
     if (amount >= 1000) {
-      formattedAmount = `$${(amount / 1000).toFixed(1)}K`;
+      formattedAmount = `$${formatLargeNumber(amount)}`;
     } else {
       formattedAmount = `$${amount.toFixed(0)}`;
     }
@@ -205,7 +189,14 @@ export default function HomeScreen() {
   const getYearlyChangeText = () => {
     if (!performanceData) return '';
     const sign = performanceData.yearlyChange >= 0 ? '+' : '';
-    return `${sign}${formatPrice(performanceData.yearlyChange)} (${sign}${performanceData.yearlyChangePercent.toFixed(2)}%)`;
+    const amount = Math.abs(performanceData.yearlyChange);
+    let formattedAmount;
+    if (amount >= 1000) {
+      formattedAmount = `$${formatLargeNumber(amount)}`;
+    } else {
+      formattedAmount = formatPrice(performanceData.yearlyChange);
+    }
+    return `${sign}${formattedAmount} (${sign}${performanceData.yearlyChangePercent.toFixed(1)}%)`;
   };
 
   const getYearlyChangeColor = () => {
@@ -339,7 +330,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 15,
     paddingHorizontal: 10,
-    lineHeight: undefined, // Let the system calculate optimal line height
+    lineHeight: undefined,
   },
   changeContainer: {
     marginBottom: 20,
@@ -348,7 +339,7 @@ const styles = StyleSheet.create({
   performanceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
+    width: '125%',
     paddingHorizontal: 0,
   },
   performanceItem: {
