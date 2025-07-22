@@ -46,8 +46,13 @@ export default function HomeScreen() {
       }
       setError(null);
       
-      // Fetch 1-year historical data which includes current price data
-      // This reduces API calls from 3 to 1 per update
+      // Fetch current price first for accurate real-time data
+      const priceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
+      const priceData = await priceResponse.json();
+      const newPrice = priceData.bitcoin.usd;
+      const change24h = priceData.bitcoin.usd_24h_change || 0;
+      
+      // Fetch 1-year historical data for yearly performance and other metrics
       const yearlyResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365');
       const yearlyData: BitcoinHistoricalData = await yearlyResponse.json();
       
@@ -55,23 +60,21 @@ export default function HomeScreen() {
         throw new Error('No historical data available');
       }
       
-      // Get the latest data points (current price is the last entry)
+      // Get the data points
       const prices = yearlyData.prices;
       const marketCaps = yearlyData.market_caps;
       const volumes = yearlyData.total_volumes;
       
-      // Current price is the most recent price point
-      const newPrice = prices[prices.length - 1][1];
+      // Calculate 24h change from the API data (more accurate)
+      const previousPrice24h = newPrice - change24h;
+      const priceChange = change24h;
+      const priceChangePercent = (priceChange / previousPrice24h) * 100;
       
-      // Calculate 24h high/low from the last 48 data points (last ~24 hours)
-      const last24hPrices = prices.slice(-48);
-      const high24h = Math.max(...last24hPrices.map(p => p[1]));
-      const low24h = Math.min(...last24hPrices.map(p => p[1]));
-      
-      // Get previous price (24 hours ago approximately)
-      const previousPriceValue = prices.length > 48 ? prices[prices.length - 48][1] : prices[prices.length - 2][1];
-      const priceChange = newPrice - previousPriceValue;
-      const priceChangePercent = (priceChange / previousPriceValue) * 100;
+      // Calculate 24h high/low from recent data points (last few days of data)
+      const recentPrices = prices.slice(-7); // Last 7 days
+      const allRecentPrices = recentPrices.map(p => p[1]);
+      const high24h = Math.max(...allRecentPrices);
+      const low24h = Math.min(...allRecentPrices);
       
       // Calculate yearly performance (first price point is ~1 year ago)
       const priceOneYearAgo = prices[0][1];
@@ -84,7 +87,7 @@ export default function HomeScreen() {
       
       const newPerformanceData: BitcoinPerformanceData = {
         currentPrice: newPrice,
-        previousPrice: previousPriceValue,
+        previousPrice: previousPrice24h,
         priceChange: priceChange,
         priceChangePercent: priceChangePercent,
         high24h: high24h,
@@ -185,15 +188,29 @@ export default function HomeScreen() {
     return `${sign}${formatPrice(performanceData.priceChange)} (${sign}${performanceData.priceChangePercent.toFixed(2)}%)`;
   };
 
-  const getYearlyChangeColor = () => {
-    if (!performanceData) return undefined;
-    return performanceData.yearlyChange >= 0 ? '#22C55E' : '#EF4444';
+  const getCompactPriceChangeText = () => {
+    if (!performanceData) return '';
+    const sign = performanceData.priceChange >= 0 ? '+' : '';
+    // Format with abbreviated currency for space saving
+    const amount = Math.abs(performanceData.priceChange);
+    let formattedAmount;
+    if (amount >= 1000) {
+      formattedAmount = `$${(amount / 1000).toFixed(1)}K`;
+    } else {
+      formattedAmount = `$${amount.toFixed(0)}`;
+    }
+    return `${sign}${formattedAmount} (${sign}${performanceData.priceChangePercent.toFixed(1)}%)`;
   };
 
   const getYearlyChangeText = () => {
     if (!performanceData) return '';
     const sign = performanceData.yearlyChange >= 0 ? '+' : '';
-    return `${sign}${performanceData.yearlyChangePercent.toFixed(2)}%`;
+    return `${sign}${formatPrice(performanceData.yearlyChange)} (${sign}${performanceData.yearlyChangePercent.toFixed(2)}%)`;
+  };
+
+  const getYearlyChangeColor = () => {
+    if (!performanceData) return undefined;
+    return performanceData.yearlyChange >= 0 ? '#22C55E' : '#EF4444';
   };
 
   if (error) {
@@ -229,20 +246,26 @@ export default function HomeScreen() {
               <ThemedView style={styles.changeContainer}>
                 <ThemedView style={styles.performanceRow}>
                   <ThemedView style={styles.performanceItem}>
-                    <ThemedText style={[
-                      styles.changeText,
-                      { color: getPriceChangeColor() }
-                    ]}>
+                    <ThemedText 
+                      style={[styles.changeText, { color: getPriceChangeColor() }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit={true}
+                      minimumFontScale={0.5}
+                      allowFontScaling={false}
+                    >
                       {getPriceChangeText()}
                     </ThemedText>
                     <ThemedText style={styles.timeLabel}>24h Change</ThemedText>
                   </ThemedView>
                   
                   <ThemedView style={styles.performanceItem}>
-                    <ThemedText style={[
-                      styles.yearlyChangeText,
-                      { color: getYearlyChangeColor() }
-                    ]}>
+                    <ThemedText 
+                      style={[styles.yearlyChangeText, { color: getYearlyChangeColor() }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit={true}
+                      minimumFontScale={0.5}
+                      allowFontScaling={false}
+                    >
                       {getYearlyChangeText()}
                     </ThemedText>
                     <ThemedText style={styles.timeLabel}>1Y Performance</ThemedText>
@@ -326,21 +349,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
   },
   performanceItem: {
     alignItems: 'center',
     flex: 1,
+    paddingHorizontal: 8,
+    minWidth: 0,
   },
   changeText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+    width: '100%',
   },
   yearlyChangeText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+    width: '100%',
   },
   timeLabel: {
     fontSize: 12,
