@@ -133,8 +133,9 @@ export default function StrategyScreen() {
   useEffect(() => {
     fetchMSTRData(true); // Initial load with loading state
     
-    // Auto-refresh every 5 minutes (daily data doesn't change frequently)
-    const interval = setInterval(() => fetchMSTRData(false), 300000);
+    // Auto-refresh every 2 hours to stay within 25 requests/day limit
+    // This allows for ~12 updates per day, leaving room for manual refreshes
+    const interval = setInterval(() => fetchMSTRData(false), 7200000); // 2 hours = 7,200,000ms
     
     return () => clearInterval(interval);
   }, []);
@@ -192,7 +193,7 @@ export default function StrategyScreen() {
         <ThemedView style={styles.errorContainer}>
           <ThemedText style={styles.errorText}>Error loading MSTR data</ThemedText>
           <ThemedText style={styles.errorDetail}>{error}</ThemedText>
-          <ThemedText style={styles.retryText}>Retrying in 60 seconds...</ThemedText>
+          <ThemedText style={styles.retryText}>Retrying in 2 hours...</ThemedText>
         </ThemedView>
       </ThemedView>
     );
@@ -264,7 +265,7 @@ export default function StrategyScreen() {
       </ThemedView>
       
       <ThemedText style={styles.footer}>
-        Auto-refreshes every 5 minutes
+        Auto-refreshes every 2 hours (API limit: 25/day)
       </ThemedText>
     </ThemedView>
   );
