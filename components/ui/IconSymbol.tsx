@@ -18,6 +18,8 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'bitcoinsign.circle.fill': 'monetization-on',
+  'chart.line.uptrend.xyaxis': 'trending-up',
 } as IconMapping;
 
 /**
