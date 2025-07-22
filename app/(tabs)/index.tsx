@@ -413,7 +413,7 @@ export default function HomeScreen() {
             backgroundGradientFrom: 'transparent',
             backgroundGradientTo: 'transparent',
             decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(247, 147, 26, ${opacity})`,
+            color: (opacity = 1) => `rgba(247, 147, 26, 0.9)`, // Increased opacity from default
             labelColor: (opacity = 1) => `rgba(128, 128, 128, 0)`, // Make labels transparent
             style: {
               borderRadius: 16
@@ -564,11 +564,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 20,
   },
   priceContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: 30,
     paddingHorizontal: 10,
   },
   bitcoinLabel: {
@@ -585,7 +586,7 @@ const styles = StyleSheet.create({
     lineHeight: undefined,
   },
   changeContainer: {
-    marginBottom: 20,
+    marginBottom: 10,
     alignItems: 'center',
   },
   performanceRow: {
@@ -619,18 +620,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   chartSection: {
-    marginVertical: 20,
+    marginVertical: 10,
     alignItems: 'center',
   },
   chartTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   intervalContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 15,
+    marginBottom: 10,
     paddingHorizontal: 10,
     gap: 8,
   },
@@ -675,7 +676,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   statsContainer: {
-    marginTop: 20,
+    marginTop: 10,
     paddingHorizontal: 20,
     width: '100%',
   },
@@ -702,14 +703,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     opacity: 0.7,
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   footer: {
     fontSize: 14,
     opacity: 0.6,
     textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 20,
+    marginTop: 10,
+    marginBottom: 10,
   },
   errorContainer: {
     alignItems: 'center',
